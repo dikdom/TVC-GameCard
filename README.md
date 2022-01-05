@@ -15,7 +15,7 @@ Könyvtárstruktúra:
   - `gal`
     a GAL20V8B chip kódjainak a forrásai, amit a WinCUPL programmal lehet lefordítani
   - `hw` kapcsolási rajz és board layout EagleCAD formátumban
-  - 'tvc4snake' a TVC4Snake játék forrása
+  - `tvc4snake` a TVC4Snake játék forrása
 - `bin`
   minden, ami egy kártya elkészítéséhez szükséges: a gerber file csomagok (TH és SMD konfiguráció, az SMD -hez a gyártási file-ok is a JLC felé), 
   a GAL-ok lefordított .jed file-jai és a EPROM-ba írható bináris, ami a lefordított  boot menüt és a játékokat is tartalmazza
