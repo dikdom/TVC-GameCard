@@ -14,7 +14,7 @@ Könyvtárstruktúra:
   - `menu`
     a boot menü forráskódja, ami az ASM80.com oldalon található IDE-vel készült
   - `gal`
-    a GAL20V8B chipek forrásai, amit a WinCUPL programmal lehet lefordítani
+    a GAL20V8B chip kódjainak a forrásai, amit a WinCUPL programmal lehet lefordítani
   - `hw` kapcsolási rajz és board layout EagleCAD formátumban
 - `bin`
   minden, ami egy kártya elkészítéséhez szükséges: a gerber file csomagok (TH és SMD konfiguráció, az SMD -hez a gyártási file-ok is a JLC felé), 
