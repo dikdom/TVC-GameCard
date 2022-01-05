@@ -18,6 +18,6 @@ Könyvtárstruktúra:
   - `hw` kapcsolási rajz és board layout EagleCAD formátumban
 - `bin`
   minden, ami egy kártya elkészítéséhez szükséges: a gerber file csomagok (TH és SMD konfiguráció, az SMD -hez a gyártási file-ok is a JLC felé), 
-  a GAL-ok lefordított .jed file-jai és a ROM-ba írható bináris, ami a lefordított  boot menüt és a játékokat is tartalmazza
+  a GAL-ok lefordított .jed file-jai és a EPROM-ba írható bináris, ami a lefordított  boot menüt és a játékokat is tartalmazza
 
 MIT License: minden használható/módosítható, de forrást tessék feltüntetni
