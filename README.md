@@ -1,7 +1,6 @@
 # TVC-GameCard
 Egy IO bővítőkártya a Videoton TV Computerhez, melyen 2 extra joy port és egy SN76489 hangchip található. Ez a kártya a TVC játékos lehetőségeit
 bővíti a jobb zenei lehetőségeivel és a 4 játékos üzemmóddal.
-An IO expander card for Videoton TV Computer having +2 joy port and an SN76489 sound chip.
 
 Ez a repo a méltán nagysikerű Videoton TV Computerhez készített TVC-GameCard IO kártya leírását és újragyártásához szükséges file-okat tartalmazza.
 A kártya 2 extra joy portot, egy SN76489 hangchipet (+3 hangcsatorna +1 zajcsatorna) és 4 extra játékot tartalmaz. Bekapcsoláskor a felhasználó
@@ -22,3 +21,8 @@ Könyvtárstruktúra:
   a GAL-ok lefordított .jed file-jai és a EPROM-ba írható bináris, ami a lefordított  boot menüt és a játékokat is tartalmazza
 
 MIT License: minden használható/módosítható, de forrást tessék feltüntetni
+
+
+An IO expander card for Videoton TV Computer having +2 joy port and an SN76489 sound chip.
+
+MIT License: you can use anything as you want but please, link the source in your project
