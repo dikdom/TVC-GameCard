@@ -1,0 +1,60 @@
+Name     tvc-joy ;
+PartNo   00 ;
+Date     2021. 07. 13. ;
+Revision 01 ;
+Designer Engineer ;
+Company  Nokia ;
+Assembly None ;
+Location  ;
+Device   g20v8alcc ;
+
+/* *************** INPUT PINS *********************/
+PIN  2		= JOY3_UP;
+PIN  3		= JOY3_DOWN;
+PIN  4		= JOY3_LEFT;
+PIN  5 	= JOY3_RIGHT;
+PIN  6 	= JOY3_FIRE;
+
+PIN  7		= JOY4_UP;
+PIN  9		= JOY4_DOWN;
+PIN 10		= JOY4_LEFT;
+PIN 11 	= JOY4_RIGHT;
+PIN 12 	= JOY4_FIRE;
+
+PIN 13		= A0;
+PIN 16		= A1;
+PIN 17		= A2;
+PIN 19		= A3;
+
+PIN 24		= !SLOTn;
+PIN 27		= !RD;
+
+
+
+/* *************** OUTPUT PINS *********************/
+PIN 18		= D0;
+PIN 20		= D1;
+PIN 21		= D2;
+PIN 23		= D3;
+PIN 25		= D4;
+
+PIN 26 	= SN_REGISTER_CE;
+
+
+/* JOY LOGIC */
+
+D0.OE = !A3 & !A2 & A1 & SLOTn & RD;
+D1.OE = !A3 & !A2 & A1 & SLOTn & RD;
+D2.OE = !A3 & !A2 & A1 & SLOTn & RD;
+D3.OE = !A3 & !A2 & A1 & SLOTn & RD;
+D4.OE = !A3 & !A2 & A1 & SLOTn & RD;
+
+D0 = (JOY3_UP    & !A0) # (JOY4_UP   & A0);
+D1 = (JOY3_DOWN  & !A0) # (JOY4_DOWN  & A0);
+D2 = (JOY3_LEFT  & !A0) # (JOY4_LEFT  & A0);
+D3 = (JOY3_RIGHT & !A0) # (JOY4_RIGHT & A0);
+D4 = (JOY3_FIRE  & !A0) # (JOY4_FIRE  & A0);
+
+SN_REGISTER_CE = !(((!A3 & !A2 & !A1 & !A0) # (A3 & A2 & A1 & A0)) & SLOTn);
+
+

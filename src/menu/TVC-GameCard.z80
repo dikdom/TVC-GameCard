@@ -1,0 +1,672 @@
+; genbin
+; genlist
+; 
+            .ORG    $0000 
+SNAKECAS:            
+; .incbin "tvc4snakes.cas"
+RASTERCAS   EQU     SNAKECAS + 4601 
+; .incbin "RASTER.cas"
+BATTLECAS   EQU     RASTERCAS + 11846 
+; .incbin "Battlefield.cas"
+BOMBERCAS   EQU     BATTLECAS + 19537
+
+; asm80.com at the time of writing this code was buggy, it couldn't include binary files.
+; Instead I just simply edited the size of the cas files above and copied them into the
+; eeprom's content. 
+; Didn't like this hack. 
+
+
+            .ORG    $C000 
+STRIPECAS:           
+            DS      $82 
+            DW      $0010 
+            DS      $0c 
+STRIPE_LOOP: INC    a 
+            OUT     ($00),a 
+            JR      stripe_loop 
+; defines
+; 0 to 8k dump for emulator
+; 1 to 64k dump for real eeprom
+; 
+SAVE_TO_ROM EQU     0 
+; 
+BASE_IO_ADDR EQU    $0000 
+P_SAVE      EQU     $0003 
+PORT03      EQU     $0B11 
+WARM        EQU     $0B21 
+PICTURE     EQU     $0B51 
+BASIC_START EQU     $19EF 
+; 
+JUMP_CODE_ADDR EQU  $0100 
+COPY_DST    EQU     $0100 
+COPY_SRC    EQU     $0102 
+COPY_LEN    EQU     $0104 
+; 
+FUNC_VMODE  EQU     $04 
+FUNC_CLS    EQU     $05 
+FUNC_ED_CHOUT EQU   $21 ; C
+FUNC_ED_BKOUT EQU   $22 
+FUNC_ED_CPOS EQU    $23 ; C:1-24 (Y), B:1-32 (X)
+; 
+            IF      SAVE_TO_ROM=1 
+            .BINFROM $0000 
+            .BINTO  $10000 
+            ELSE     
+            .BINFROM $E000 
+            .BINTO  $10000 
+            ENDIF    
+; 
+            .ORG    0E000h 
+; 
+            .PHASE  $C000 
+            DB      "MOPS" 
+            DB      06h 
+            DB      "JOY+SN" 
+            DW      INIT 
+; 
+INIT:                
+            LD      a,(WARM) 
+            INC     a 
+            RET     z ; on WARM reset do nothing
+
+            LD      A,$F0 ; U0-U1-U2-EXT
+            LD      (P_SAVE),A 
+            OUT     ($02),A 
+
+            PUSH    IX ; PORT03 is not set yet, so....
+            POP     BC ; 40, 70, a0, d0
+            LD      a,c 
+            DEC     a 
+            AND     $C0 
+            LD      (PORT03),a ; let's set PORT03
+            RRCA     ; 00, 01, 02, 03
+            RRCA     
+            ADD     a,$10 
+            LD      (BASE_IO_ADDR),a ; Base IO address
+
+            CALL    INIT_SCREEN 
+            CALL    PRINT_MENU 
+
+            CALL    INPUT_LOOP 
+            RET      
+
+INIT_SCREEN:         
+            LD      a,$82 
+            OUT     ($00),a 
+            LD      c,01h 
+            RST     $30 
+            DB      FUNC_VMODE 
+
+            LD      A,$41 ; blue
+            OUT     ($60),A 
+            LD      A,$FF ; white
+            OUT     ($61),A 
+            LD      A,$41 ; blue
+            OUT     ($62),A 
+            LD      A,$FF ; white
+            OUT     ($63),A 
+
+            RST     $30 
+            DB      FUNC_CLS 
+
+            RET      
+
+PRINT_MENU:          
+            LD      bc,$0904 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            LD      hl,MENU_TITLE 
+            CALL    PRINT_PSTR 
+            LD      bc,$070A 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            LD      hl,MENU_LINE0 
+            CALL    PRINT_PSTR 
+            CALL    PRINT_LIST 
+            CALL    PRINT_CREDITS 
+            LD      bc,$0118 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            LD      hl,MENU_2021 
+            CALL    PRINT_PSTR 
+            LD      hl,MENU_VERSION 
+            CALL    PRINT_PSTR 
+            LD      bc,$0118 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            RET      
+; 
+PRINT_LIST:          
+            LD      b,00 
+            INC     b 
+; 
+PRINT_LIST_LOOP:     
+            PUSH    bc 
+; 
+            LD      a,b 
+            ADD     a,$0A 
+            LD      c,a 
+; 
+            LD      b,09 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+; 
+            POP     bc 
+            PUSH    bc 
+; 
+            LD      a,$30 
+            ADD     a,b 
+            LD      c,a 
+            CALL    PRINT_CHAR 
+; 
+            LD      hl,MENU_HYPHEN 
+            CALL    PRINT_PSTR 
+; 
+            POP     bc 
+            PUSH    bc 
+            DEC     b 
+            LD      a,b 
+            RLCA     
+            RLCA     
+            LD      hl,DIR+1 
+            LD      e,a 
+            LD      d,0 
+            ADD     hl,de 
+            LD      e,(hl) 
+            INC     hl 
+            LD      d,(hl) 
+            EX      de,hl 
+            CALL    PRINT_PSTR 
+; 
+            POP     bc 
+            INC     b 
+            LD      a,(DIR) 
+            CP      b 
+            JR      nc,PRINT_LIST_LOOP 
+; 
+PRINT_CREDITS:       
+            LD      bc,$0814 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            LD      hl,CREDITS 
+            CALL    PRINT_PSTR 
+            LD      hl,CREDITS_ZSOLT 
+            CALL    PRINT_PSTR 
+            LD      bc,$1115 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            LD      hl,CREDITS_TOM 
+            CALL    PRINT_PSTR 
+            LD      bc,$1116 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            LD      hl,CREDITS_NOEL 
+            CALL    PRINT_PSTR 
+            LD      bc,$1117 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            LD      hl,CREDITS_MISI 
+            CALL    PRINT_PSTR 
+            LD      bc,$1118 
+            RST     $30 
+            DB      FUNC_ED_CPOS 
+            LD      hl,CREDITS_SANYI 
+            CALL    PRINT_PSTR 
+            RET      
+; 
+PRINT_CHAR:          
+            LD      a,($0038) 
+            PUSH    af 
+            LD      a,$c9 ; RET
+            LD      ($0038),a 
+            RST     $30 
+            DB      FUNC_ED_CHOUT 
+            DI       
+            POP     af 
+            LD      ($0038),a 
+;            OUT     ($07),a
+            RET      
+; 
+PRINT_PSTR:          
+            LD      a,(hl) 
+            LD      c,a 
+            INC     hl 
+            XOR     a 
+            LD      b,a 
+            LD      de,$0100 
+            PUSH    bc 
+            PUSH    de 
+            LDIR     
+            POP     de 
+            POP     bc 
+            LD      a,($0038) 
+            PUSH    af 
+            LD      a,$c9 ; RET
+            LD      ($0038),a 
+            RST     $30 
+            DB      FUNC_ED_BKOUT 
+            DI       
+            POP     af 
+            LD      ($0038),a 
+;            OUT     ($07),a
+            RET      
+
+INVERT_SELECTION:    
+            LD      a,$D0 ; U0-U1-VID-EXT
+            OUT     ($02),a 
+            PUSH    hl 
+            PUSH    de 
+            PUSH    bc 
+            LD      hl,$8000 + 10*640 + 16 
+            LD      de,640 
+            LD      b,c 
+MUL_LINES:           
+            DEC     b 
+            JR      z,done_mul_lines 
+            ADD     hl,de 
+            JR      mul_lines 
+DONE_MUL_LINES:      
+            POP     bc 
+            PUSH    bc 
+            PUSH    hl 
+            LD      hl,DIR+1 
+            LD      a,c 
+            DEC     a 
+            RLCA     
+            RLCA     
+            LD      e,a 
+            LD      d,0 
+            ADD     hl,de 
+            LD      e,(hl) 
+            INC     hl 
+            LD      d,(hl) 
+            EX      de,hl 
+            LD      a,(hl) ; len of menu item
+            ADD     a,4 ; "n - " prefix of each menuitem
+            RLCA     ; mul by 2 because of 4 color mode
+            LD      ($0100),a 
+            POP     hl 
+            LD      b,10 
+            LD      de,64 
+CLINE_LOOP:          
+            PUSH    hl 
+            PUSH    bc 
+            LD      a,($0100) 
+            LD      b,a 
+PLINE_LOOP:          
+            LD      a,(hl) 
+            CPL      
+            LD      (hl),a 
+            INC     hl 
+            DJNZ    pline_loop 
+            POP     bc 
+            POP     hl 
+            ADD     hl,de 
+            DJNZ    cline_loop 
+            POP     bc 
+            POP     de 
+            POP     hl 
+            LD      A,(P_SAVE) 
+            OUT     ($02),A 
+
+            RET      
+; 
+;PRINT_HEX_NIBBLE:
+;            PUSH    bc
+;            AND     $0f
+;            CP      $0a
+;            JR      c,PRINT_HEX_DIGIT
+;            ADD     a,"A"
+;            SUB     10
+;            JR      PRINT_HEX_FINAL
+;PRINT_HEX_DIGIT:
+;            ADD     a,"0"
+;PRINT_HEX_FINAL:
+;            LD      c,a
+;            CALL    PRINT_CHAR
+;            POP     bc
+;            RET
+;PRINT_HEX_BYTE:
+;            PUSH    AF
+;            RLCA
+;            RLCA
+;            RLCA
+;            RLCA
+;            CALL    PRINT_HEX_NIBBLE
+;            POP     AF
+;            CALL    PRINT_HEX_NIBBLE
+;            RET
+;PRINT_HEX:
+;            PUSH    hl
+;            PUSH    af
+;            PUSH    bc
+;            LD      c,$20
+;            CALL    print_char
+;            LD      a,h
+;            CALL    PRINT_HEX_BYTE
+;            LD      a,l
+;            CALL    PRINT_HEX_BYTE
+;            POP     bc
+;            POP     af
+;            POP     hl
+;            RET
+; 
+INPUT_LOOP:          
+            CALL    FILL_PICTURE 
+            LD      a,($0B58) ; ESC
+            LD      c,00 
+            BIT     3,a 
+            JR      z,KEY_PRESSED 
+            LD      a,($0B51) ; 1
+            INC     c 
+            BIT     6,a 
+            JR      z,KEY_PRESSED 
+            INC     c 
+            BIT     2,a 
+            JR      z,KEY_PRESSED 
+            INC     c 
+            BIT     1,a 
+            JR      z,KEY_PRESSED 
+            INC     c 
+            BIT     7,a 
+            JR      z,KEY_PRESSED 
+            JR      INPUT_LOOP 
+; 
+KEY_PRESSED:         
+            LD      a,c 
+            OR      a ; ESC pressed
+            RET     z 
+            PUSH    af 
+            CALL    INVERT_SELECTION 
+            POP     af 
+            LD      (WARM),a ; reset to COLD once any prg selected
+            PUSH    bc 
+
+;debug
+;            PUSH    af
+;            LD      a,$02
+;            OUT     ($00),a
+;            LD      a,c
+;            CALL    PRINT_HEX_BYTE
+; 
+; needed!!!
+            CALL    COPY_JUMP_CODE 
+;debug
+;            LD      bc,$FFFF
+;LOOP1:
+;            DEC     bc
+;            LD      a,b
+;            OR      c
+;            JR      nz,loop1
+;            LD      a,$08
+;            OUT     ($00),a
+;            POP     af
+; 
+            CALL    COPY_PROGRAM ; A still contains prog index (1, 2, ...)
+            POP     bc 
+;            jp execute_program
+; 
+EXECUTE_PROGRAM:     
+            LD      a,c 
+            DEC     a 
+            LD      hl,START_ADDR 
+            RLCA     
+            ADD     a,l 
+            LD      l,a 
+            LD      a,$00 
+            ADC     a,h 
+            LD      h,a 
+            LD      e,(hl) 
+            INC     hl 
+            LD      d,(hl) 
+            EX      de,hl 
+; 
+;            CALL    PRINT_HEX
+;            PUSH    hl
+;            LD      hl,(BASIC_START)
+;            CALL    PRINT_HEX
+;            POP     hl
+            LD      bc,$0000 
+LOOP2:               
+            DEC     bc 
+            LD      a,(IX+8) 
+            LD      a,b 
+            OR      c 
+            JR      nz,loop2 
+            JP      (hl) 
+; 
+COPY_PROGRAM:        
+            LD      HL,DIR+1 
+            DEC     A 
+            RLCA     
+            RLCA     
+            ADD     A,2 ; will result 02-0A
+            LD      E,A 
+            LD      D,0 
+            ADD     HL,DE 
+            LD      E,(HL) 
+            INC     HL 
+            LD      D,(HL) ; DE: start of CAS in the EEPROM (0000-FFFF)
+            EX      DE,HL 
+            PUSH    HL ; HL: start of CAS
+; 
+;            CALL    PRINT_HEX
+; 
+            LD      a,$82 ; Add $82 offset for the length of the program in CAS file
+            ADD     a,l 
+            LD      l,a 
+            LD      a,00 
+            ADC     a,h 
+            LD      h,a 
+            CALL    JUMP_CODE_ADDR + (GET_WORD - GET_WORD) ; get_prg_len
+; 
+;            PUSH    bc
+;            POP     hl
+;            CALL    PRINT_HEX
+; 
+            POP     hl 
+            LD      a,$90 
+            ADD     a,l 
+            LD      l,a 
+            LD      a,00 
+            ADC     a,h ; HL -> start of TVC program (within CAS file)
+            LD      h,a 
+            CALL    JUMP_CODE_ADDR + (COPY_PRG - GET_WORD) ; copy_prg, <-BC
+            RET      
+; 
+COPY_JUMP_CODE:      
+            LD      bc,JUMP_CODE_END - JUMP_CODE 
+            LD      de,JUMP_CODE_ADDR 
+            LD      hl,ROM_CODE_END 
+            LDIR     
+            RET      
+; 
+FILL_PICTURE:        
+            LD      a,(PORT03) 
+            LD      c,a 
+            LD      b,9 
+            LD      HL,PICTURE+9 
+FILL_PICTURE_LOOP:   
+            LD      a,c 
+            OR      b 
+            OUT     ($03),a 
+            IN      a,($58) 
+            LD      (hl),a 
+            DEC     hl 
+            DEC     b 
+            JP      p,FILL_PICTURE_LOOP 
+            RET      
+; 
+ASM80EMULATOR:       
+            LD      bc,$0500 
+            LD      DE,$C000 
+            LD      HL,$E000 
+            LDIR     
+            CALL    COPY_JUMP_CODE 
+            JR      ASM80EMULATOR 
+; 
+DIR:                 
+            DB      4 
+
+            DW      NAME_BATTLE 
+            DW      BATTLECAS 
+
+            DW      NAME_BOMBER 
+            DW      BOMBERCAS 
+
+
+            DW      NAME_RASTER 
+            DW      RASTERCAS 
+
+            DW      NAME_SNAKE 
+            DW      SNAKECAS 
+; 
+; 
+START_ADDR:          
+            DW      6656 
+            DW      6659 
+            DW      6656 
+            DW      6656 
+; 
+NAME_SNAKE:          
+            .PSTR   "TVC4Snake" 
+NAME_RASTER:         
+            .PSTR   "RasterRunner" 
+NAME_BATTLE:         
+            .PSTR   "Battlefield" 
+NAME_BOMBER:         
+            .PSTR   "Bomberman" 
+MENU_TITLE:          
+            .PSTR   "TVC GameCard Men\u0097" 
+MENU_LINE0:          
+            .PSTR   "ESC - Kil\u0091p\u0091s BASICbe" 
+MENU_2021:           
+            .PSTR   "2021" 
+MENU_HYPHEN:         
+            .PSTR   " - " 
+MENU_VERSION:        
+            .PSTR   "-r1229" 
+; 
+CREDITS:             
+            .PSTR   "Szerz\u0095k: " 
+CREDITS_ZSOLT:       
+            .PSTR   "Bert\u0093k Zsolt" 
+CREDITS_NOEL:        
+            .PSTR   "Persa Noel" 
+CREDITS_TOM:         
+            .PSTR   "Major Tam\u0090s" 
+CREDITS_MISI:        
+            .PSTR   "S\u0090r\u0090nszki Mih\u0090ly" 
+CREDITS_SANYI:       
+            .PSTR   "Vass S\u0090ndor" 
+; 
+ROM_CODE_END:        
+            .DEPHASE  
+; 
+JUMP_CODE:           
+            .PHASE  $0100 
+GET_WORD:            
+            LD      b,h 
+            CALL    BANK_ON_HL 
+            LD      A,H 
+            AND     $1F 
+            ADD     A,$C0 
+            LD      h,a 
+            LD      e,(hl) 
+            LD      h,b 
+            INC     hl 
+            CALL    BANK_ON_HL 
+            LD      A,H 
+            AND     $1F 
+            ADD     A,$C0 
+            LD      h,a 
+            LD      d,(hl) 
+            PUSH    DE 
+            LD      h,$E0 
+            CALL    BANK_ON_HL 
+            POP     BC ; BC contains the length of the CAS
+            RET      
+COPY_PRG:            
+            LD      de,BASIC_START 
+            LD      (COPY_SRC),HL 
+            LD      (COPY_DST),DE 
+            LD      (COPY_LEN),BC 
+; 
+COPY_PRG_LOOP:       
+            CALL    BANK_ON_HL 
+; 
+            LD      a,h 
+            AND     $1F 
+            LD      h,a 
+; 
+            XOR     a 
+            LD      de,$2000 
+            EX      de,hl 
+; 
+            SBC     HL,DE 
+            XOR     a 
+; 
+            SBC     HL,BC 
+            JR      c,ONE_MORE_ROUND 
+LAST_ROUND:          
+            LD      hl,(COPY_SRC) 
+            LD      de,(COPY_DST) 
+            LD      bc,(COPY_LEN) 
+            LD      a,h 
+            AND     $1F 
+            ADD     a,$C0 
+            LD      h,a 
+            LDIR     
+            LD      h,$E0 
+            CALL    BANK_ON_HL 
+            RET      
+ONE_MORE_ROUND:      
+            LD      hl,(COPY_SRC) 
+            LD      de,$2000 
+            LD      a,h 
+            AND     $1F 
+            LD      h,a 
+            EX      de,hl 
+            XOR     a 
+            SBC     hl,de 
+            EX      de,hl ; DE -> len of the block to copy
+            LD      hl,(COPY_LEN) 
+            XOR     a 
+            SBC     hl,de 
+            LD      (COPY_LEN),HL ; (COPY_LEN) -> remaining size of prg
+            PUSH    de 
+            PUSH    de 
+            POP     bc ; BC -> len of the block to copy
+            LD      hl,(COPY_SRC) 
+            LD      a,h 
+            AND     $1F 
+            ADD     a,$C0 
+            LD      h,a 
+            LD      DE,(COPY_DST) 
+            LDIR     
+            LD      (COPY_DST),DE 
+            LD      hl,(COPY_SRC) 
+            POP     de 
+            ADD     hl,de 
+            LD      (COPY_SRC),hl ; HL -> start of next block to copy
+            LD      bc,(COPY_LEN) 
+            LD      a,b 
+            OR      c 
+            JR      nz,COPY_PRG_LOOP 
+            LD      h,$E0 
+;            jp BANK_ON_HL      ; bank back to firmware bank and RETurn
+BANK_ON_HL:          
+            PUSH    bc 
+            LD      A,(BASE_IO_ADDR) 
+            ADD     A,$0F 
+            LD      C,A ; GameCard register in C
+            LD      A,H 
+            RLCA     
+            RLCA     
+            RLCA     
+            AND     $07 
+            OUT     (C),A ; mapped in
+            POP     bc 
+            RET      
+            .DEPHASE  
+JUMP_CODE_END:       

@@ -1,0 +1,48 @@
+Name     TVC-LOGIC ;
+PartNo   00 ;
+Date     2021. 07. 13. ;
+Revision 01 ;
+Designer Sanyi ;
+Company  Nokia ;
+Assembly None ;
+Location  ;
+Device   g20v8alcc ;
+
+/* *************** INPUT PINS *********************/
+PIN  2	=	CLK;
+PIN 16 = 	OE;
+PIN 3	=	!SN_OR_REG_CE;
+PIN 4	=	A0;
+PIN 5	= 	SN_READY;
+PIN 6	=	D0;
+PIN 7	= 	D1;
+PIN 9	=	D2;
+PIN 10 =	D3;
+PIN 11 = 	!WR;
+PIN 12 =	CLKIN_359;
+PIN 13 =      nBRESET;
+
+/* *************** OUTPUT PINS *********************/
+PIN 18 =	A13;
+PIN 19	=	A14;
+PIN 20	= 	A15;
+PIN 21	= 	SN_CLK_ENA;
+PIN 23 =	SN_CE_WR;
+PIN 24	=	SN_LATCH_DATA;
+PIN 25	=	CLK_FOR_REGISTER;
+PIN 26 =	CLKOUT_359;
+
+
+
+/* Logic */
+A13.D = D0 # (!nBRESET);
+A14.D = D1 # (!nBRESET);
+A15.D = D2 # (!nBRESET);
+SN_CLK_ENA.D = !D3  # !nBRESET;
+SN_CE_WR = SN_READY & !(SN_OR_REG_CE & WR & !A0);
+SN_LATCH_DATA = SN_OR_REG_CE & !A0 & WR;
+CLK_FOR_REGISTER = (SN_OR_REG_CE & A0 & WR) # (!nBRESET);
+/* CLKOUT_359.OE = SN_CLK_ENA; */
+CLKOUT_359 = CLKIN_359 & (!SN_CLK_ENA);
+
+
